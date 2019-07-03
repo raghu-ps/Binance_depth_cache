@@ -79,7 +79,7 @@ public class DepthCacheExample {
     try {
         return jackson.writeValueAsString(object);
     } catch (Exception ex) {
-        LOG.log(Level.SEVERE, "Error while creating json: ", ex);
+        //LOG.log(Level.SEVERE, "Error while creating json: ", ex);
     }
     return null;
    }
@@ -95,7 +95,7 @@ public class DepthCacheExample {
         mapper.setDateFormat(dateFormat);
         return mapper.readValue(content, valueType);
     } catch (Exception e) {
-        LOG.log(Level.WARNING, "returning null because of error : {0}", e.getMessage());
+        //LOG.log(Level.WARNING, "returning null because of error : {0}", e.getMessage());
         return null;
     }
  }
