@@ -98,14 +98,17 @@ public class DepthCacheExample {
       asks.put(new BigDecimal(ask.getPrice()), new BigDecimal(ask.getQty()));
     }
     depthCache.put(ASKS, asks);
-    //pool.set(ASKS, stringify(asks));
+    
+    String askString = asks.toString();
+    pool.set(ASKS, askString);
 
     NavigableMap<BigDecimal, BigDecimal> bids = new TreeMap<>(Comparator.reverseOrder());
     for (OrderBookEntry bid : orderBook.getBids()) {
       bids.put(new BigDecimal(bid.getPrice()), new BigDecimal(bid.getQty()));
     }
     depthCache.put(BIDS, bids);
-    //pool.set(BIDS,stringify(bids));
+    String bidString = bids.toString();
+    pool.set(BIDS,bidString);
   }
 
   /**
