@@ -72,34 +72,6 @@ public class DepthCacheExample {
 
     initialize();
   }
-
-  public static String stringify(Object object) {
-    ObjectMapper jackson = new ObjectMapper();
-    jackson.setSerializationInclusion(JsonSerialize.Inclusion.NON_NULL);
-    try {
-        return jackson.writeValueAsString(object);
-    } catch (Exception ex) {
-        //LOG.log(Level.SEVERE, "Error while creating json: ", ex);
-    }
-    return null;
-   }
-
-
-
-   public static <T> T objectify(String content, TypeReference valueType) {
-    try {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(Feature.WRITE_DATES_AS_TIMESTAMPS, false);
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss.SSS");
-        dateFormat.setTimeZone(Calendar.getInstance().getTimeZone());
-        mapper.setDateFormat(dateFormat);
-        return mapper.readValue(content, valueType);
-    } catch (Exception e) {
-        //LOG.log(Level.WARNING, "returning null because of error : {0}", e.getMessage());
-        return null;
-    }
- }
-
   private void initialize() {
     // 1. Subscribe to depth events and cache any events that are received.
     final List<DepthEvent> pendingDeltas = startDepthEventStreaming();
@@ -139,14 +111,16 @@ public class DepthCacheExample {
     }
     /*depthCache.put(ASKS, asks);*/
    Jedis jedis = pool.getResource();
-   jedis.lpush(ASKS, stringify(asks));
+   //jedis.lpush(ASKS, stringify(asks));
+    jedis.hmset(ASKS, asks);
 
     NavigableMap<BigDecimal, BigDecimal> bids = new TreeMap<>(Comparator.reverseOrder());
     for (OrderBookEntry bid : orderBook.getBids()) {
       bids.put(new BigDecimal(bid.getPrice()), new BigDecimal(bid.getQty()));
     }
     /*depthCache.put(BIDS, bids);*/
-    jedis.lpush(BIDS, stringify(bids))
+    //jedis.lpush(BIDS, stringify(bids))
+    jedis.hmset(BIDS, bids);
   }
 
   /**
@@ -203,14 +177,14 @@ public class DepthCacheExample {
 
     Jedis jedis = pool.getResource();
 
-    NavigableMap<BigDecimal, BigDecimal> asksOutput = objectify(jedis.hgetAll(ASKS), new TypeReference<NavigableMap<BigDecimal, BigDecimal>>(){})
+    NavigableMap<BigDecimal, BigDecimal> asksOutput = jedis.hgetAll(ASKS);
     //return depthCache.get(ASKS);
     return asksOutput;
   }
 
   public NavigableMap<BigDecimal, BigDecimal> getBids() {
     Jedis jedis = pool.getResource();
-    NavigableMap<BigDecimal, BigDecimal> bidsOutput = objectify(jedis.hetAll(BIDS), new TypeReference<Navigable<BigDecimal, BigDecimal>>(){})
+    NavigableMap<BigDecimal, BigDecimal> bidsOutput = jedis.hgetAll(BIDS);
     //return depthCache.get(BIDS);
     return bidsOutput;
   }
