@@ -157,7 +157,7 @@ public class DepthCacheExample {
   public NavigableMap<BigDecimal, BigDecimal> getBids() {
     //return depthCache.get(BIDS);
 	  //NavigableMap<BigDecimal, BigDecimal> bidsOutput = objectify(pool.get(BIDS), new TypeReference<NavigableMap<BigDecimal, BigDecimal>>(){});
-	    return depthCache.get(ASKS);
+	    return depthCache.get(BIDS);
 		//  return bidsOutput;
   }
 
