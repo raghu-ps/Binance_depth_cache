@@ -209,7 +209,9 @@ public class DepthCacheExample {
 	  for (int i = 0; i < allPrices.size(); i++) {
 		  TickerPrice tickPrice = allPrices.get(i);
 		  String sym = tickPrice.getSymbol();
-		  new DepthCacheExample(sym);
+		  if(sym.contains("BTC")){
+		    new DepthCacheExample(sym);
+		  }
 		}
 	  //for (String symb : allPrices.getSymbol()) {
 	      //asks.put(new BigDecimal(ask.getPrice()), new BigDecimal(ask.getQty()));
