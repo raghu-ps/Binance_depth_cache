@@ -184,7 +184,7 @@ public class DepthCacheExample {
 			    }    
 			}
 		 
-		 if ((totalQuantOfBids >= 3.0) && (percentChangeInUSD <= 3) && (percentChangeInETHInteger <= 3)) {
+		 if ((totalQuantOfBids >= 3.0) && (percentChangeInUSD <= 3) && (percentChangeInETHInteger <= 1.5)) {
 			 System.out.println("CONDITION # 1 SATISFIED ");
 			 if(totalQuantOfBids >= (4.0 * totalQuantOfAsks)) {
 				 System.out.println("CONDITION # 2 SATISFIED ");
