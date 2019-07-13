@@ -6,6 +6,8 @@ import com.binance.api.client.BinanceApiWebSocketClient;
 import com.binance.api.client.domain.market.OrderBook;
 import com.binance.api.client.domain.market.OrderBookEntry;
 import com.binance.api.client.domain.market.TickerPrice;
+import com.binance.api.client.domain.market.TickerStatistics;
+import com.binance.api.client.domain.account.NewOrder;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -14,6 +16,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Collections;
+import java.io.*;
+
+import org.json.simple.JSONObject;
+
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -41,46 +51,30 @@ public class DepthCacheExample {
   private static final Integer redisPort = 6379;
 
   private long lastUpdateId;
+  
+  private long timeAfter;
+  
+  private long time;
+  
+  private Date afterAddingTenSeconds;
 
   private Map<String, NavigableMap<BigDecimal, BigDecimal>> depthCache;
+  
+  private Map<BigDecimal, BigDecimal> askMap = new HashMap<BigDecimal,BigDecimal>();
+  
+  private Map<BigDecimal, BigDecimal> bidMap = new HashMap<BigDecimal,BigDecimal>();
 
   public DepthCacheExample(String symbol) {
+	Calendar cal = Calendar.getInstance();
+	long time= cal.getTimeInMillis();
+	Date afterAddingTenSeconds=new Date(time + (1 * 10000));
+	long timeAfter = afterAddingTenSeconds.getTime();
     initializeDepthCache(symbol);
     startDepthEventStreaming(symbol);
-  }
+	}
   
   private static Jedis pool = new Jedis(redisHost);
-  
-  
- // private static String stringify(Object object) {
-	   // ObjectMapper jackson = new ObjectMapper();
-	    //jackson.configure(SerializationFeature.WRITE_NULL_MAP_VALUES, false);
-	    //jackson.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.ALWAYS, Include.NON_NULL));
-	    //jackson.configure(SerializationFeature.WRITE_NULL_MAP_VALUES, false);
-	    //jackson.setSerializationInclusion(Include.NON_NULL);
-	    //jackson.setSerializationInclusion(Include.NON_NULL);
-	//    try {
-	      //  return jackson.writeValueAsString(object);
-	  //  } catch (Exception ex) {
-	        //LOG.log(Level.SEVERE, "Error while creating json: ", ex);
-	    //}
-	    //return null;
-	//}
-  
-  //private static <T> T objectify(String content, TypeReference valueType) {
-	//    try {
-	       // ObjectMapper mapper = new ObjectMapper();
-	        //mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-	       // mapper.configure(Feature.WRITE_DATES_AS_TIMESTAMPS, false);
-	        //DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss.SSS");
-	        //dateFormat.setTimeZone(Calendar.getInstance().getTimeZone());
-	        //mapper.setDateFormat(dateFormat);
-	        //return mapper.readValue(content, valueType);
-	  //  } catch (Exception e) {
-	       // LOG.log(Level.WARNING, "returning null because of error : {0}", e.getMessage());
-	    //    return null;
-	    //}
-	//}
+
 
   /**
    * Initializes the depth cache by using the REST API.
@@ -117,7 +111,15 @@ public class DepthCacheExample {
   private void startDepthEventStreaming(String symbol) {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
     BinanceApiWebSocketClient client = factory.newWebSocketClient();
-
+    
+    
+  BinanceApiClientFactory factoryvar = BinanceApiClientFactory.newInstance();
+  BinanceApiRestClient clientvar = factory.newRestClient();
+  Calendar cals = Calendar.getInstance();
+  time= cals.getTimeInMillis();
+  afterAddingTenSeconds=new Date(time + (1 * 10000));
+  timeAfter = afterAddingTenSeconds.getTime();
+// ii = 0;
     client.onDepthEvent(symbol.toLowerCase(), response -> {
       if (response.getUpdateId() > lastUpdateId) {
         System.out.println(response);
@@ -125,6 +127,103 @@ public class DepthCacheExample {
         updateOrderBook(getAsks(), response.getAsks());
         updateOrderBook(getBids(), response.getBids());
         printDepthCache();
+        Calendar cal = Calendar.getInstance();
+        long timenow= cal.getTimeInMillis();
+        System.out.println("Time Now: "+timenow);
+        System.out.println("Time fututre: "+timeAfter);
+    	if(timenow >= timeAfter) {
+        System.out.println("INSIDE 10SEC TIME WINDOW: ");
+		 TickerStatistics tickerStatisticsForUSD = clientvar.get24HrPriceStatistics("BTCUSDT");
+		 String percentChange = tickerStatisticsForUSD.getPriceChangePercent();
+		 double percentChangeInUSD = Double.parseDouble(percentChange);
+		 TickerStatistics tickerStatisticsForETH = clientvar.get24HrPriceStatistics("ETHBTC");
+		 String percentChangeETH = tickerStatisticsForETH.getPriceChangePercent();
+		 double percentChangeInETHInteger = Double.parseDouble(percentChangeETH);
+		 Map<BigDecimal, BigDecimal> reverseSortedMapOfBids = new TreeMap<BigDecimal, BigDecimal>(Collections.reverseOrder());
+		 reverseSortedMapOfBids.putAll(bidMap);
+		 Map.Entry<BigDecimal, BigDecimal> entry = reverseSortedMapOfBids.entrySet().iterator().next();
+		 BigDecimal keyOfBids= entry.getKey();
+		 Double doubleValueOfBids = keyOfBids.doubleValue();
+		 Double nintySevenPercentOfBids = 0.97 * keyOfBids.doubleValue();
+		 BigDecimal bidsAtNintySevenPercent = BigDecimal.valueOf(nintySevenPercentOfBids);
+		 Double totalQuantOfBids = 0.0;
+		 
+		 BigDecimal bestPriceAtBid = entry.getValue();
+		 Double dBestPriceAtBid = bestPriceAtBid.doubleValue();
+		 
+		 for (Map.Entry<BigDecimal, BigDecimal> entryInLoop : reverseSortedMapOfBids.entrySet()) {
+			    BigDecimal key = entryInLoop.getKey();
+			    Double keyOfBidsInLoop = key.doubleValue();
+			    BigDecimal value = entryInLoop.getValue();
+			    Double valueOfBidsInLoop = value.doubleValue();
+			    if ((keyOfBidsInLoop <= doubleValueOfBids) || (keyOfBidsInLoop >= nintySevenPercentOfBids)) {
+			    	totalQuantOfBids=totalQuantOfBids + valueOfBidsInLoop;	
+			    }    
+			}
+		 
+		 
+		 Map<BigDecimal, BigDecimal> sortedMapOfAsks = new TreeMap<BigDecimal, BigDecimal>(askMap);
+		 Map.Entry<BigDecimal, BigDecimal> entryOfAsks = sortedMapOfAsks.entrySet().iterator().next();
+		 BigDecimal keyOfAsks= entryOfAsks.getKey();
+		 Double doubleValueOfAsks = keyOfAsks.doubleValue();
+		 
+		 Double hundredAndThreeOfAsks = 1.03 * keyOfAsks.doubleValue();
+		 BigDecimal bidsAtHundredAndThree = BigDecimal.valueOf(hundredAndThreeOfAsks);
+		 Double totalQuantOfAsks = 0.0;
+		 
+		 BigDecimal priceOfAsks = entryOfAsks.getValue();
+		 Double dPriceOfAsks = priceOfAsks.doubleValue();
+		 
+		 for (Map.Entry<BigDecimal, BigDecimal> entryInLoop : sortedMapOfAsks.entrySet()) {
+			    BigDecimal key = entryInLoop.getKey();
+			    Double keyOfBidsInLoop = key.doubleValue();
+			    BigDecimal value = entryInLoop.getValue();
+			    Double valueOfBidsInLoop = value.doubleValue();
+			    if ((keyOfBidsInLoop <= doubleValueOfAsks) || (keyOfBidsInLoop >= hundredAndThreeOfAsks)) {
+			    	totalQuantOfAsks=totalQuantOfAsks + valueOfBidsInLoop;	
+			    }    
+			}
+		 
+		 if ((totalQuantOfBids >= 3.0) && (percentChangeInUSD <= 3) && (percentChangeInETHInteger <= 3)) {
+			 System.out.println("CONDITION # 1 SATISFIED ");
+			 if(totalQuantOfBids >= (4.0 * totalQuantOfAsks)) {
+				 System.out.println("CONDITION # 2 SATISFIED ");
+				 System.out.println("############################################ ");
+				 System.out.println("TOTAL QUANTITY in BIDS: "+ totalQuantOfBids);
+				 System.out.println("TOTAL QUANTITY in ASKS: "+ totalQuantOfAsks);
+				 System.out.println("BEST PRICE IN BIDS: "+ dBestPriceAtBid);
+				 System.out.println("BEST PRICE IN ASKS: "+ dPriceOfAsks);
+				 System.out.println("############################################ ");
+				 // WITH THE ACCOUNT DETAILS PLACE THE BUY ORDER AND THEN SELL IT AT HIGHER PRICE
+				 System.out.println("INSIDE THE PLACING ORDER STRATEGY: ");
+				 JSONObject obj = new JSONObject();
+				 obj.put("TOTAL QUANTITY in BIDS",totalQuantOfBids);
+				 obj.put("TOTAL QUANTITY in ASKS",totalQuantOfAsks);
+				 obj.put("BEST PRICE IN BIDS", dBestPriceAtBid);
+				 obj.put("BEST PRICE IN ASKS", dPriceOfAsks);
+				 StringWriter out = new StringWriter();
+				 try {
+			     obj.writeJSONString(out);
+			     String jsonText = out.toString();
+				 pool.set("BEST TRADE"+timenow, jsonText);
+				 }
+				 catch(IOException ex) {
+					 System.out.println (ex.toString());
+					 
+				 }
+			     
+				 
+				 
+			 }
+			 
+		 }
+		 time = cal.getTimeInMillis();
+	    afterAddingTenSeconds=new Date(time + (1 * 10000));
+	     timeAfter = afterAddingTenSeconds.getTime();
+	     askMap.clear();
+	     bidMap.clear();
+    	}
+    	
       }
     });
   }
@@ -188,11 +287,25 @@ public class DepthCacheExample {
   private void printDepthCache() {
     System.out.println(depthCache);
     System.out.println("ASKS:");
-    getAsks().entrySet().forEach(entry -> System.out.println(toDepthCacheEntryString(entry)));
+    //getAsks().entrySet().forEach(entry -> System.out.println(toDepthCacheEntryString(entry)));
     System.out.println("BIDS:");
-    getBids().entrySet().forEach(entry -> System.out.println(toDepthCacheEntryString(entry)));
+    //getBids().entrySet().forEach(entry -> System.out.println(toDepthCacheEntryString(entry)));
+    setFinalAsks();
+    setFinalBids();
     System.out.println("BEST ASK: " + toDepthCacheEntryString(getBestAsk()));
     System.out.println("BEST BID: " + toDepthCacheEntryString(getBestBid()));
+  }
+  
+  private void setFinalAsks() {
+	  Map.Entry<BigDecimal, BigDecimal> depthCacheEntry = getBestAsk();
+	  askMap.put(depthCacheEntry.getKey(), depthCacheEntry.getValue());
+	  
+  }
+  
+  private void setFinalBids() {
+	  Map.Entry<BigDecimal, BigDecimal> depthCacheEntry = getBestBid();
+	  bidMap.put(depthCacheEntry.getKey(), depthCacheEntry.getValue());
+	  
   }
 
   /**
@@ -203,16 +316,16 @@ public class DepthCacheExample {
   }
 
   public static void main(String[] args) {
-	  BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
-	  BinanceApiRestClient client = factory.newRestClient();
-	  List<TickerPrice> allPrices = client.getAllPrices();
-	  for (int i = 0; i < allPrices.size(); i++) {
-		  TickerPrice tickPrice = allPrices.get(i);
-		  String sym = tickPrice.getSymbol();
-		  if(sym.contains("BTC")){
-		    new DepthCacheExample(sym);
-		  }
-		}
+	  //BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
+	 // BinanceApiRestClient client = factory.newRestClient();
+	  //List<TickerPrice> allPrices = client.getAllPrices();
+	  //for (int i = 0; i < allPrices.size(); i++) {
+		//  TickerPrice tickPrice = allPrices.get(i);
+		 // String sym = tickPrice.getSymbol();
+		  //if(sym.contains("BTC")) {
+		  new DepthCacheExample("ETHBTC");
+		  //}
+		//}
 	  //for (String symb : allPrices.getSymbol()) {
 	      //asks.put(new BigDecimal(ask.getPrice()), new BigDecimal(ask.getQty()));
 	    //}
